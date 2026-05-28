@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reputation Toolkit</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="toolbar" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Reputation Toolkit</p>
+          <h1 id="page-title">Vendor Toolbase</h1>
+        </div>
+        <div class="toolbar-actions">
+          <button id="export-vendors" type="button">Export</button>
+          <label class="file-button" for="import-file">Import</label>
+          <input id="import-file" type="file" accept="application/json,.json">
+          <button id="reset-vendors" class="danger" type="button">Reset</button>
+        </div>
+      </section>
+
+      <section class="layout">
+        <form id="vendor-form" class="panel form-panel" autocomplete="off">
+          <input id="vendor-id" type="hidden">
+          <div class="section-title">
+            <h2 id="form-title">Add Vendor</h2>
+            <button id="cancel-edit" class="ghost hidden" type="button">Cancel</button>
+          </div>
+
+          <label for="vendor-name">Vendor name</label>
+          <input id="vendor-name" type="text" placeholder="Example: VirusTotal" required>
+
+          <fieldset>
+            <legend>Supported values</legend>
+            <div id="type-checkboxes" class="type-grid"></div>
+          </fieldset>
+
+          <label for="vendor-template">Search URL template</label>
+          <input id="vendor-template" type="url" placeholder="https://example.com/search?q={value}" required>
+          <p class="hint">Use {value} for URL-encoded input or {raw} when the vendor requires the exact selected text.</p>
+
+          <label class="switch-row" for="vendor-enabled">
+            <span>Enabled in right-click menu</span>
+            <input id="vendor-enabled" type="checkbox" checked>
+          </label>
+
+          <div class="form-actions">
+            <button id="save-vendor" type="submit">Save vendor</button>
+            <button id="test-vendor" class="secondary" type="button">Test URL</button>
+          </div>
+
+          <p id="form-message" class="message" role="status"></p>
+        </form>
+
+        <section class="panel vendors-panel" aria-labelledby="vendors-title">
+          <div class="section-title">
+            <div>
+              <h2 id="vendors-title">Vendors</h2>
+              <p id="vendor-count" class="subtle"></p>
+            </div>
+            <div class="filters" role="group" aria-label="Vendor type filter">
+              <button class="filter active" type="button" data-filter="all">All</button>
+              <button class="filter" type="button" data-filter="ip">IP</button>
+              <button class="filter" type="button" data-filter="domain">Domain</button>
+              <button class="filter" type="button" data-filter="hash">Hash</button>
+              <button class="filter" type="button" data-filter="url">URL</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Vendor</th>
+                  <th scope="col">Types</th>
+                  <th scope="col">Template</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="vendors-table"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="vendor-row-template">
+      <tr>
+        <td class="vendor-name"></td>
+        <td class="vendor-types"></td>
+        <td class="vendor-template"></td>
+        <td class="vendor-status"></td>
+        <td class="row-actions">
+          <button class="small edit" type="button">Edit</button>
+          <button class="small delete" type="button">Delete</button>
+        </td>
+      </tr>
+    </template>
+
+    <script src="vendors.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

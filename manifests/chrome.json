@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Reputation Toolkit",
+  "version": "1.0.0",
+  "description": "Right-click selected IPs, domains, hashes, and URLs to check reputation across security vendors.",
+  "permissions": [
+    "contextMenus",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_title": "Reputation Toolkit",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "reputation-toolkit-extension",
+  "version": "1.0.0",
+  "description": "Cross-browser reputation lookup extension for selected IPs, domains, hashes, and URLs.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "clean": "node scripts/build.mjs --clean"
+  }
+}
