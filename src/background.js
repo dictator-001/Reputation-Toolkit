@@ -1,9 +1,13 @@
-if (typeof importScripts === "function" && typeof VendorDefaults === "undefined") {
-  importScripts("vendors.js");
+if (typeof importScripts === "function") {
+  if (typeof VendorDefaults === "undefined") {
+    importScripts("vendors.js");
+  }
+  if (typeof Shared === "undefined") {
+    importScripts("shared.js");
+  }
 }
 
-const api = typeof browser !== "undefined" ? browser : chrome;
-const usesPromiseApi = typeof browser !== "undefined";
+const { api, storageGet, storageSet, createTab, buildVendorUrl, isSafeUrl } = Shared;
 const ROOT_MENU_ID = "reputation-toolkit-root";
 const OPEN_MATCHING_ID = "reputation-toolkit-open-matching";
 const MANAGE_ID = "reputation-toolkit-manage";
@@ -13,52 +17,14 @@ const TYPE_ORDER = ["ip", "domain", "hash", "url"];
 const TYPE_LABELS = Object.fromEntries(VendorDefaults.types.map((type) => [type.id, type.label]));
 let menuRebuildQueue = Promise.resolve();
 
-function extensionLastError() {
-  return api.runtime?.lastError || (typeof chrome !== "undefined" ? chrome.runtime?.lastError || null : null);
-}
-
-function storageGet(defaults) {
-  if (usesPromiseApi) {
-    return api.storage.local.get(defaults);
-  }
-
-  return new Promise((resolve, reject) => {
-    api.storage.local.get(defaults, (result) => {
-      const lastError = extensionLastError();
-      if (lastError) {
-        reject(new Error(lastError.message));
-        return;
-      }
-      resolve(result);
-    });
-  });
-}
-
-function storageSet(values) {
-  if (usesPromiseApi) {
-    return api.storage.local.set(values);
-  }
-
-  return new Promise((resolve, reject) => {
-    api.storage.local.set(values, () => {
-      const lastError = extensionLastError();
-      if (lastError) {
-        reject(new Error(lastError.message));
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
 function removeAllMenus() {
-  if (usesPromiseApi) {
+  if (Shared.usesPromiseApi) {
     return api.contextMenus.removeAll();
   }
 
   return new Promise((resolve, reject) => {
     api.contextMenus.removeAll(() => {
-      const lastError = extensionLastError();
+      const lastError = Shared.extensionLastError();
       if (lastError) {
         reject(new Error(lastError.message));
         return;
@@ -68,30 +34,22 @@ function removeAllMenus() {
   });
 }
 
-function createTab(details) {
-  if (usesPromiseApi) {
-    return api.tabs.create(details);
+function openOptionsPage() {
+  if (Shared.usesPromiseApi && api.runtime.openOptionsPage) {
+    return api.runtime.openOptionsPage();
   }
 
-  return new Promise((resolve, reject) => {
-    api.tabs.create(details, (tab) => {
-      const lastError = extensionLastError();
-      if (lastError) {
-        reject(new Error(lastError.message));
-        return;
-      }
-      resolve(tab);
-    });
-  });
-}
-
-function openOptionsPage() {
   if (api.runtime.openOptionsPage) {
-    const result = api.runtime.openOptionsPage();
-    if (result && typeof result.then === "function") {
-      return result;
-    }
-    return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      api.runtime.openOptionsPage(() => {
+        const lastError = Shared.extensionLastError();
+        if (lastError) {
+          reject(new Error(lastError.message));
+          return;
+        }
+        resolve();
+      });
+    });
   }
 
   return createTab({ url: api.runtime.getURL("options.html"), active: true });
@@ -127,7 +85,7 @@ function createMenu(item) {
   return new Promise((resolve, reject) => {
     try {
       api.contextMenus.create(item, () => {
-        const lastError = extensionLastError();
+        const lastError = Shared.extensionLastError();
         if (lastError) {
           reject(new Error(lastError.message));
           return;
@@ -237,8 +195,8 @@ function normalizeIp(text) {
     return ipv4Match[0];
   }
 
-  const ipv6Match = cleaned.match(/\b(?:[a-fA-F0-9]{1,4}:){2,}[a-fA-F0-9]{0,4}\b/);
-  return ipv6Match ? ipv6Match[0] : "";
+  const ipv6Match = cleaned.match(/(?:^|[\s:])([a-fA-F0-9]{1,4}(?::[a-fA-F0-9]{1,4}){2,7})(?:$|[\s/])/);
+  return ipv6Match ? ipv6Match[1] : "";
 }
 
 function normalizeHash(text) {
@@ -336,13 +294,6 @@ function detectTypes(text) {
   return detected;
 }
 
-function buildVendorUrl(template, value) {
-  const encodedValue = encodeURIComponent(value);
-  return template
-    .replaceAll("{value}", encodedValue)
-    .replaceAll("{raw}", value);
-}
-
 async function openVendor(vendor, selectedText, type, active) {
   const normalizedValue = normalizeForType(selectedText, type);
   if (!normalizedValue) {
@@ -350,6 +301,10 @@ async function openVendor(vendor, selectedText, type, active) {
   }
 
   const targetUrl = buildVendorUrl(vendor.urlTemplate, normalizedValue);
+  if (!isSafeUrl(targetUrl)) {
+    return;
+  }
+
   await createTab({ url: targetUrl, active });
 }
 

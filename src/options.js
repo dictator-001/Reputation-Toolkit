@@ -1,5 +1,4 @@
-const api = typeof browser !== "undefined" ? browser : (typeof chrome !== "undefined" ? chrome : null);
-const usesPromiseApi = typeof browser !== "undefined";
+const { api, storageGet, storageSet, createTab, buildVendorUrl } = Shared;
 const storageKey = VendorDefaults.storageKey;
 const versionKey = VendorDefaults.versionKey;
 const typeLabels = Object.fromEntries(VendorDefaults.types.map((type) => [type.id, type.label]));
@@ -26,74 +25,6 @@ const elements = {
   filters: document.querySelectorAll(".filter")
 };
 
-function extensionLastError() {
-  return typeof chrome !== "undefined" ? chrome.runtime?.lastError || null : null;
-}
-
-function storageGet(defaults) {
-  if (!api?.storage?.local) {
-    return Promise.resolve(defaults);
-  }
-
-  if (usesPromiseApi) {
-    return api.storage.local.get(defaults);
-  }
-
-  return new Promise((resolve, reject) => {
-    api.storage.local.get(defaults, (result) => {
-      const lastError = extensionLastError();
-      if (lastError) {
-        reject(new Error(lastError.message));
-        return;
-      }
-      resolve(result);
-    });
-  });
-}
-
-function storageSet(values) {
-  if (!api?.storage?.local) {
-    return Promise.resolve(values);
-  }
-
-  if (usesPromiseApi) {
-    return api.storage.local.set(values);
-  }
-
-  return new Promise((resolve, reject) => {
-    api.storage.local.set(values, () => {
-      const lastError = extensionLastError();
-      if (lastError) {
-        reject(new Error(lastError.message));
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
-function createTab(details) {
-  if (!api?.tabs?.create) {
-    window.open(details.url, "_blank", "noopener");
-    return Promise.resolve();
-  }
-
-  if (usesPromiseApi) {
-    return api.tabs.create(details);
-  }
-
-  return new Promise((resolve, reject) => {
-    api.tabs.create(details, (tab) => {
-      const lastError = extensionLastError();
-      if (lastError) {
-        reject(new Error(lastError.message));
-        return;
-      }
-      resolve(tab);
-    });
-  });
-}
-
 function cloneDefaults() {
   return JSON.parse(JSON.stringify(VendorDefaults.vendors));
 }
@@ -103,8 +34,13 @@ async function loadVendors() {
     [storageKey]: null
   });
 
-  vendors = Array.isArray(stored[storageKey]) ? stored[storageKey] : cloneDefaults();
-  await persistVendors();
+  if (Array.isArray(stored[storageKey])) {
+    vendors = stored[storageKey];
+  } else {
+    vendors = cloneDefaults();
+    await persistVendors();
+  }
+
   render();
 }
 
@@ -173,12 +109,6 @@ function validateTemplate(template) {
   }
 
   return "";
-}
-
-function buildVendorUrl(template, value) {
-  return template
-    .replaceAll("{value}", encodeURIComponent(value))
-    .replaceAll("{raw}", value);
 }
 
 function setMessage(text, type = "") {
@@ -365,10 +295,17 @@ async function importVendors(event) {
       throw new Error("JSON must contain a vendors array.");
     }
 
+    const seenIds = new Set();
+
     for (const vendor of importedVendors) {
       if (!vendor.id || !vendor.name || !Array.isArray(vendor.types) || !vendor.urlTemplate) {
         throw new Error("Each vendor needs id, name, types, and urlTemplate.");
       }
+
+      if (seenIds.has(vendor.id)) {
+        throw new Error(`Duplicate vendor id "${vendor.id}" found in import file.`);
+      }
+      seenIds.add(vendor.id);
 
       const templateError = validateTemplate(vendor.urlTemplate);
       if (templateError) {
